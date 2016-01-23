@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="utf-8" />
+        <meta name="format-detection" content="telephone=no" />
+        <meta name="viewport" content="user-scalable=no, initial-scale=1, maximum-scale=1, minimum-scale=1, width=device-width, height=device-height" />
+        <title>APPREDA VOTES LIST</title>
+        
+        <link href="css/jquery.mobile-1.4.5.min.css" rel="stylesheet" type="text/css"/>
+        <link href="css/bootstrap.min.css" rel="stylesheet" type="text/css"/>
+        <link href="css/style.css" rel="stylesheet" type="text/css"/>
+        
+        <script src="js/jquery-2.1.4.min.js" type="text/javascript"></script>
+        <script src="js/jquery.mobile-1.4.5.min.js" type="text/javascript"></script>
+        <script src="js/bootstrap.min.js" type="text/javascript"></script>
+        <script>
+            var URL         = null;
+            var METODO      = null;
+            var VALOR       = null;
+            var LOADER      = null;
+            var ERROR       = null;
+            
+            var USUARIO     = null;
+            var COD_VOTANTE = null;
+            var VOTANTES    = null;
+            
+            function call_Ajax_Jsonp(URL, METODO, VALOR, LOADER, ERROR, FN) 
+            {
+                $.ajax
+                ({
+                    type: "GET",
+                    url: URL,
+                    data:
+                    {
+                        m: METODO,
+                        v: VALOR
+                    },
+                    dataType: "jsonp",
+                    jsonp: "callback",
+                    jsonpCallback: "JasonpCallback",
+                    async: true,
+                    beforeSend: function()
+                    {
+                        $(LOADER).css("display", "block");
+                        $(LOADER).css("padding-bottom", "15px");
+                    },
+                    complete: function()
+                    {
+                        $(LOADER).css("display", "none");
+                    },
+                    success: function(data)
+                    {
+                        FN(data);
+                    },
+                    error: function () 
+                    {
+                        $(ERROR).css("display", "block");
+                        $(ERROR).html("<p style='padding:10px; color:red;'>No se pudo conectar, por favor intente nuevamente.</p>");
+                    }
+                });
+            }
+            
+            $(document).on("pagecreate", "#index", function(event)
+            {
+                localStorage.clear();
+                sessionStorage.clear();
+
+                $("#button-inicio-session").click(function(e)
+                {
+                    USUARIO             = $('#usuario').val();
+                    CLAVE               = $('#clave').val();
+                    URL                 = "common/ws.php?format=json";
+                    METODO              = "LOGIN_LIST";
+                    VALOR               = USUARIO + "|" + CLAVE;
+                    LOADER              = "#loader";
+                    ERROR               = "#error";
+
+                    $(ERROR).css("display", "none");
+
+                    if($("#usuario").val().length > 0 && $("#clave").val().length > 0)
+                    {    
+                        call_Ajax_Jsonp(URL, METODO, VALOR, LOADER, ERROR, function(data) 
+                        {
+                            if(data[0].RESULTADO === "0000")
+                            {
+                                localStorage.setItem("USUARIO", USUARIO);
+                                sessionStorage.setItem("USUARIO", USUARIO);
+                                $.mobile.pageContainer.pagecontainer
+                                (
+                                    "change", 
+                                    "./main.html", 
+                                    {
+                                        showLoadMsg: true,
+                                        reload: true,
+                                        transition: "pop",
+                                        changeHash: true
+                                    }
+                                );                       
+                            }
+                            else
+                            {
+                                $(ERROR).css("display", "block");
+                                $(ERROR).html("<p style='color:red; font-size:14px;'>Usuario no encontrado.</p>");
+                                e.preventDefault();
+                            }
+                        });                         
+                    }
+                    else 
+                    {
+                        $(ERROR).css("display", "block");
+                        $(ERROR).html("<p style='color:red; font-size:14px;'>Todos los campos son obligatorios.</p>"); 
+                        e.preventDefault();
+                    }
+                });
+            });
+
+           
+            $(document).on("pagecreate", "#main", function(event)
+            {      
+                USUARIO = localStorage.getItem("USUARIO", USUARIO);
+                $('#titulo').append("CASILLA: " + USUARIO);
+                
+                URL                 = "common/ws.php?format=json";
+                METODO              = "LEER_VOTANTES_CASILLA";
+                VALOR               = USUARIO;
+                LOADER              = "#loader";
+                ERROR               = "#error";
+                
+                call_Ajax_Jsonp(URL, METODO, VALOR, LOADER, ERROR, function(data) 
+                {
+                    if(data[0].RESULTADO === "0000")
+                    {  
+                        $.each(data, function(index)
+                        {
+                            if (index !== 0)
+                            {
+                                COD_VOTANTE = data[index].consecutivo_def;
+                                VOTANTES =                                          
+                                    "<tr>" +
+                                        "<td style='text-align:center'>" + COD_VOTANTE + "</td>" +
+                                    "</tr>"
+                                $('#votantes').append(VOTANTES);
+                            }
+                        });
+                    }
+                    else
+                    {
+                        $(ERROR).css("display", "block");
+                        $(ERROR).html("<p style='color:red; font-size:14px;'>"+ data[0].MENSAJE +".</p>");
+                        $(LOADER).css("display", "none");
+                        e.preventDefault();
+                    }
+                }); 
+                    
+                $("#button-refrescar").click(function(e)
+                {
+                    location.reload();
+                }); 
+
+
+            });
+
+            
+        </script>
+
+    </head> 
+    <body>
+        <!--div id="splash" class="ui-page splash" data-role="page" data-title="APPREDA MOVIL" data-ajax="false" >
+            <div class="ui-content">
+            </div>
+        </div-->
+        
+        <div id="main" class="ui-page" data-role="page" data-title="APPREDA VOTES LIST" data-ajax="false" >
+            <div class="ui-content">
+                <div class="row" style="padding-top:20px;">
+                    <div class="col-xs-3 pull-right">
+                        <button type="button" id="button-refrescar" name="button-refrescar" class="btn btn-default pull-right">REFRESCAR</button>
+                    </div>
+                </div>
+                    <div class="row" style="padding-top:20px;">
+                    
+                    <div class="col-xs-12">
+                        <div class="panel panel-default">    
+                            <div class="panel-heading" style="text-align:center;" id="titulo" >
+
+                            </div>
+                            <div class="panel-body" style="padding-top:30px;" >
+                                <table data-role="table" class="ui-responsive table table-bordered" id="votantes">
+                                    <thead>
+                                        <tr class="info">
+                                            <th style="text-align:center;">CODIGO</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </body>
+</html>
